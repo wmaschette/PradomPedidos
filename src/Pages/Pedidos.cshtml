@@ -1,0 +1,64 @@
+﻿@page
+@model PedidoSyncWeb.Pages.PedidosModel
+@{
+    ViewData["Title"] = "Atualização de Pedidos";
+}
+
+<h2 class="mt-4">Atualização de Pedidos</h2>
+
+<hr />
+
+@if (string.IsNullOrEmpty(Model.UltimaAtualizacao))
+{
+    <p class="text-muted">Nenhuma atualização realizada até o momento.</p>
+}
+else
+{
+    <div class="mb-3">
+        <p><strong>Data última atualização:</strong> @Model.UltimaAtualizacao</p>
+        <p><strong>Último atualizador:</strong> @Model.UltimoAtualizador</p>
+    </div>
+}
+
+<form method="post" id="formPedidos">
+    <div class="row">
+        <div class="col-md-12">
+            <label class="form-label"><strong>Nome do Atualizador:</strong></label>
+            <input type="text" asp-for="NomeAtualizador" class="form-control" required />
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <label class="form-label"><strong>Código do Atualizador:</strong></label>
+            <input type="text" asp-for="CodigoPedido" class="form-control" required />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label"><strong>Data/Hora Atualização:</strong></label>
+            <input type="datetime-local" asp-for="DataHoraAtualizacao" class="form-control" required step="60"
+                   value="@Model.DataHoraAtualizacao.ToString("yyyy-MM-ddTHH:mm")" />
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mt-3">
+        <button type="submit" id="btnAtualizar" class="btn btn-info px-4">Atualizar</button>
+    </div>
+
+    <div class="mb-3">
+        <p class="text-danger fw-semibold"><strong>@Model.MensagemRetorno</strong></p>
+    </div>
+</form>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var form = document.getElementById("formPedidos");
+        var btn = document.getElementById("btnAtualizar");
+
+        form.addEventListener("submit", function () {
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = "Atualizando...";
+            }
+        });
+    });
+</script>
