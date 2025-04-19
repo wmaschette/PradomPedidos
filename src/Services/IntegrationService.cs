@@ -5,65 +5,77 @@ using System.Text.RegularExpressions;
 
 namespace PedidosPradom.Services
 {
-    public class IntegrationService
+    public class IntegrationService(SuasVendasV1Service suasVendasV1, SuasVendasV2Service suasVendasV2, OmieService omieService)
     {
-        private readonly SuasVendasV1Service _suasVendasV1;
-        private readonly SuasVendasV2Service _suasVendasV2;
-        private readonly OmieService _omieService;
+        private readonly SuasVendasV1Service _suasVendasV1 = suasVendasV1;
+        private readonly SuasVendasV2Service _suasVendasV2 = suasVendasV2;
+        private readonly OmieService _omieService = omieService;
 
-        public IntegrationService(SuasVendasV1Service suasVendasV1, SuasVendasV2Service suasVendasV2, OmieService omieService)
+        public async Task ImportarPedidosAsync(DateTime dataFiltro)
         {
-            _suasVendasV1 = suasVendasV1;
-            _suasVendasV2 = suasVendasV2;
-            _omieService = omieService;
+            var pedidos = await _suasVendasV1.BuscarPedidosAsync(dataFiltro);
+
+            if (pedidos.Count == 0)
+                throw new Exception($"Nenhum pedido encontrado a partir da data {dataFiltro:dd-MM-yyyy HH:mm}");
+
+            var pedidosComItem = pedidos.Where(x => x.PedidoItem != null);
+
+            foreach (var pedido in pedidosComItem)
+                await ProcessarPedidoV1(pedido);
         }
-
-        public async Task ImportarPedidosAsync(DateTime? dataFiltro = null, int? codigoPedido = null)
+        public async Task ImportarPedidosAsync(int pedidoId = 0, DateTime? dataFiltro = null)
         {
-            if (codigoPedido.HasValue)
+            try
             {
-                var pedido = await _suasVendasV2.BuscarPedidoPorIdAsync(codigoPedido.Value);
-                if (pedido == null)
-                    throw new Exception($"Nenhum pedido encontrado para o código {codigoPedido}");
+                var pedido = await _suasVendasV2.BuscarPedidoAsync(pedidoId, dataFiltro)
+                    ?? throw new Exception($"Nenhum pedido encontrado para o {(pedidoId > 0 ? $"código {pedidoId}" : $"filtro de data {dataFiltro:dd-MM-yyyy HH:mm}")}");
 
                 await ProcessarPedidoV2(pedido);
             }
-            else if (dataFiltro.HasValue)
+            catch (Exception ex)
             {
-                var pedidos = await _suasVendasV1.BuscarPedidosAsync(dataFiltro.Value);
-
-                if (!pedidos.Any())
-                    throw new Exception($"Nenhum pedido encontrado para o código {codigoPedido}");
-
-                foreach (var pedido in pedidos)
-                    await ProcessarPedidoV1(pedido);
+                Console.WriteLine($"Erro ao importar pedidos. {(pedidoId > 0 ? $"Código: {pedidoId}" : $"Data: {dataFiltro:dd-MM-yyyy HH:mm}")}. Detalhes: {ex.Message}");
+                throw;
             }
         }
 
         private async Task ProcessarPedidoV1(PedidoSuasVendasV1 pedido)
         {
-            var cliente = await _suasVendasV1.BuscarClienteAsync((int)pedido.PediClieId);
-            if (cliente == null || string.IsNullOrEmpty(cliente.cont_cnpj_cpf))
-                return;
-
-            var cnpj = RemoverMascara(cliente.cont_cnpj_cpf);
-            var clienteOmie = (await _omieService.BuscarClienteOmieAsync(cnpj)).clientes_cadastro?.FirstOrDefault();
-            if (clienteOmie == null)
-                return;
-
-            var itensOmie = new List<det>();
-            foreach (var item in pedido.PedidoItem ?? Array.Empty<PedidoItem>())
+            try
             {
-                var produto = await _suasVendasV1.BuscarProdutoAsync((int)item.ProdutoId);
-                var produtoOmie = (await _omieService.BuscarProdutoOmieAsync(produto.prod_nome)).produto_servico_cadastro?.FirstOrDefault();
-                if (produtoOmie == null)
-                    continue;
+                if (pedido.PediId == 51285)
+                    Console.Write("Chegou");
 
-                itensOmie.Add(_omieService.MontarItemOmie(item.ToOmieDto(), produtoOmie));
+                var cliente = await _suasVendasV1.BuscarClienteAsync((int)pedido.PediClieId);
+                if (cliente == null || string.IsNullOrEmpty(cliente.cont_cnpj_cpf))
+                    return;
+
+                var cnpj = RemoverMascara(cliente.cont_cnpj_cpf);
+                var clienteOmie = (await _omieService.BuscarClienteOmieAsync(cnpj)).clientes_cadastro?.FirstOrDefault();
+                if (clienteOmie == null)
+                    return;
+
+                if (pedido.PedidoItem == null || pedido.PedidoItem.Length == 0)
+                    return;
+
+                var itensOmie = new List<det>();
+                foreach (var item in pedido.PedidoItem ?? [])
+                {
+                    var produto = await _suasVendasV1.BuscarProdutoAsync((int)item.ProdutoId);
+                    var produtoOmie = (await _omieService.BuscarProdutoOmieAsync(produto.prod_nome)).produto_servico_cadastro?.FirstOrDefault();
+                    if (produtoOmie == null)
+                        continue;
+
+                    itensOmie.Add(_omieService.MontarItemOmie(item.ToOmieDto(), produtoOmie));
+                }
+
+                var pedidoOmie = _omieService.MontarPedidoOmie(pedido.PediId.ToString(), clienteOmie, itensOmie);
+                await _omieService.IncluirPedidoOmieAsync(pedidoOmie);
             }
-
-            var pedidoOmie = _omieService.MontarPedidoOmie(pedido.PediId.ToString(), clienteOmie, itensOmie);
-            //await _omieService.IncluirPedidoOmieAsync(pedidoOmie);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao processar pedido {pedido.PediId}: {ex.Message}");
+            }
         }
 
         private async Task ProcessarPedidoV2(List<PedidoSuasVendasV2> pedidos)

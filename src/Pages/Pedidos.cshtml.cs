@@ -6,14 +6,9 @@ using System.Threading.Tasks;
 
 namespace PedidoSyncWeb.Pages
 {
-    public class PedidosModel : PageModel
+    public class PedidosModel(IntegrationService integrationService) : PageModel
     {
-        private readonly IntegrationService _integrationService;
-
-        public PedidosModel(IntegrationService integrationService)
-        {
-            _integrationService = integrationService;
-        }
+        private readonly IntegrationService _integrationService = integrationService;
 
         public string UltimaAtualizacao { get; set; }
         public string UltimoAtualizador { get; set; } = "-";
@@ -26,7 +21,10 @@ namespace PedidoSyncWeb.Pages
         public int CodigoPedido { get; set; }
 
         [BindProperty]
-        public DateTime DataHoraAtualizacao { get; set; } = DateTime.Now;
+        public DateTime DataHoraAtualizacao { get; set; } = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.UtcNow,
+            TimeZoneInfo.FindSystemTimeZoneById("E. South America Standard Time")
+        );
 
         public async Task<IActionResult> OnPostAsync()
         {
@@ -34,19 +32,11 @@ namespace PedidoSyncWeb.Pages
             {
                 try
                 {
-                    if (CodigoPedido > 0)
-                    {
-                        await _integrationService.ImportarPedidosAsync(codigoPedido: CodigoPedido);
-                        MensagemRetorno = $"Pedido {CodigoPedido} importado com sucesso.";
-                    }
-                    else
-                    {
-                        await _integrationService.ImportarPedidosAsync(dataFiltro: DataHoraAtualizacao);
-                        MensagemRetorno = $"Pedidos após {DataHoraAtualizacao:dd/MM/yyyy HH:mm} importados com sucesso.";
-                    }
+                    await _integrationService.ImportarPedidosAsync(pedidoId: CodigoPedido, dataFiltro: DataHoraAtualizacao);
+                    MensagemRetorno = $"Pedidos após {DataHoraAtualizacao:dd/MM/yyyy} importados com sucesso.";
 
                     UltimaAtualizacao = "Realizada às " + DateTime.Now.ToString("dd/MM/yyyy HH:mm") +
-                                        " a partir de " + DataHoraAtualizacao.ToString("dd/MM/yyyy HH:mm");
+                                        " a partir de " + DataHoraAtualizacao.ToString("dd/MM/yyyy");
                     UltimoAtualizador = NomeAtualizador;
                 }
                 catch (Exception ex)

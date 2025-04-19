@@ -18,11 +18,22 @@ namespace PedidosPradom.Services
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
         }
 
-        public async Task<List<PedidoSuasVendasV2>> BuscarPedidoPorIdAsync(int pedidoId)
+        public async Task<List<PedidoSuasVendasV2>> BuscarPedidoAsync(int pedidoId = 0, DateTime? dataFiltro = null)
         {
             try
             {
-                string endpoint = $"{BaseUrl}Pedido/?pedi_id={pedidoId}";
+                if (pedidoId <= 0 && dataFiltro == null)
+                    throw new ArgumentException("É necessário informar um ID de pedido ou uma data de filtro.");
+
+                var dataAtual = TimeZoneInfo.ConvertTimeFromUtc(
+                    DateTime.UtcNow,
+                    TimeZoneInfo.FindSystemTimeZoneById("E. South America Standard Time")
+                );
+
+                string endpoint = $"{BaseUrl}Pedido/";
+                endpoint += pedidoId > 0
+                    ? $"?pedi_id={pedidoId}"
+                    : $"/{dataFiltro?.ToString("yyyy-MM-dd")}/{dataAtual:yyyy-MM-dd}";
 
                 var response = await _httpClient.GetAsync(endpoint);
 
@@ -35,14 +46,11 @@ namespace PedidosPradom.Services
                 var json = await response.Content.ReadAsStringAsync();
                 var pedidos = JsonConvert.DeserializeObject<List<PedidoSuasVendasV2>>(json);
 
-                return pedidos;
-
-
-
+                return pedidos ?? [];
             }
             catch (Exception ex)
             {
-                throw new Exception("Erro ao buscar Pedido SuasVendas V2.", ex);
+                throw new Exception("Erro ao buscar Pedido SuasVendas.", ex);
             }
         }
 

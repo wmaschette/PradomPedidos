@@ -105,29 +105,37 @@ namespace PedidosPradom.Services
             decimal total = (decimal)itens.Sum(i => i.produto.valor_total);
             decimal totalMerc = (decimal)itens.Sum(i => i.produto.valor_mercadoria);
 
+            var cabecalho = new cabecalho
+            {
+                bloqueado = "N",
+                codigo_cliente = clienteOmie.codigo_cliente_omie,
+                codigo_cliente_integracao = clienteOmie.codigo_cliente_integracao,
+                codigo_pedido_integracao = codigoPedido,
+                quantidade_itens = itens.Count.ToString(),
+                data_previsao = DateTime.Now.ToString("dd/MM/yyyy")
+            };
+
+            var informacoesAdicionais = new informacoes_adicionais
+            {
+                codigo_conta_corrente = "625937280",
+                codigo_categoria = "1.01.03",
+                utilizar_emails = clienteOmie.email,
+                enviar_email = "S",
+                
+            };
+
+            var totalPedido = new total_pedido
+            {
+                valor_mercadorias = totalMerc,
+                valor_total_pedido = total
+            };
+
             return new pedido_venda_produto
             {
-                cabecalho = new cabecalho
-                {
-                    bloqueado = "N",
-                    codigo_cliente = clienteOmie.codigo_cliente_omie,
-                    codigo_cliente_integracao = clienteOmie.codigo_cliente_integracao,
-                    codigo_pedido_integracao = codigoPedido,
-                    quantidade_itens = itens.Count.ToString(),
-                    data_previsao = DateTime.Now.ToString("dd/MM/yyyy")
-                },
-                informacoes_adicionais = new informacoes_adicionais
-                {
-                    codigo_conta_corrente = "618999666",
-                    codigo_categoria = "1.01.03",
-                    utilizar_emails = clienteOmie.email
-                },
-                det = itens.ToArray(),
-                total_pedido = new total_pedido
-                {
-                    valor_mercadorias = totalMerc,
-                    valor_total_pedido = total
-                }
+                cabecalho = cabecalho,
+                informacoes_adicionais = informacoesAdicionais,
+                det = [.. itens],
+                total_pedido = totalPedido
             };
         }
 
