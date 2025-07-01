@@ -82,15 +82,17 @@ namespace PedidosPradom.Services
         {
             foreach (var pedido in pedidos)
             {
-                // Assumindo que o ID do cliente (pedi_cont_id) seja usado para buscar na API v1
+                if (pedido.excluido == 1)
+                    continue;
+
                 var cliente = await _suasVendasV2.BuscarClientePorIdAsync(pedido.pedi_cont_id);
                 if (cliente == null || string.IsNullOrEmpty(cliente.CnpjCpf))
-                    return;
+                    continue;
 
                 var cnpj = RemoverMascara(cliente.CnpjCpf);
                 var clienteOmie = (await _omieService.BuscarClienteOmieAsync(cnpj)).clientes_cadastro?.FirstOrDefault();
                 if (clienteOmie == null)
-                    return;
+                    continue;
 
                 var itensOmie = new List<det>();
                 foreach (var item in pedido.pedi_itens ?? new List<ItemPedido>())

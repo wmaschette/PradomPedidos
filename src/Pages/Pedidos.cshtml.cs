@@ -18,13 +18,18 @@ namespace PedidoSyncWeb.Pages
         public string NomeAtualizador { get; set; }
 
         [BindProperty]
-        public int CodigoPedido { get; set; }
+        public string CodigoPedido { get; set; }
 
         [BindProperty]
         public DateTime DataHoraAtualizacao { get; set; } = TimeZoneInfo.ConvertTimeFromUtc(
             DateTime.UtcNow,
             TimeZoneInfo.FindSystemTimeZoneById("E. South America Standard Time")
-        );
+        ).Date;
+
+        //public void OnGet()
+        //{
+        //    DataHoraAtualizacao = DateTime.Today;
+        //}
 
         public async Task<IActionResult> OnPostAsync()
         {
@@ -32,11 +37,15 @@ namespace PedidoSyncWeb.Pages
             {
                 try
                 {
-                    await _integrationService.ImportarPedidosAsync(pedidoId: CodigoPedido, dataFiltro: DataHoraAtualizacao);
-                    MensagemRetorno = $"Pedidos após {DataHoraAtualizacao:dd/MM/yyyy} importados com sucesso.";
+                    int[] ids = Array.ConvertAll(CodigoPedido.Split(','), int.Parse);
+                    foreach(int pedidoId in ids)
+                    {
+                        await _integrationService.ImportarPedidosAsync(pedidoId: pedidoId, dataFiltro: null);
+                    }
 
-                    UltimaAtualizacao = "Realizada às " + DateTime.Now.ToString("dd/MM/yyyy HH:mm") +
-                                        " a partir de " + DataHoraAtualizacao.ToString("dd/MM/yyyy");
+                    MensagemRetorno = $"Pedidos {CodigoPedido} importados com sucesso.";
+
+                    UltimaAtualizacao = "Realizada às " + DateTime.Now.ToString("dd/MM/yyyy HH:mm");
                     UltimoAtualizador = NomeAtualizador;
                 }
                 catch (Exception ex)

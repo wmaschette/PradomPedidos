@@ -28,7 +28,7 @@ namespace PedidosPradom.Services
                 var dataAtual = TimeZoneInfo.ConvertTimeFromUtc(
                     DateTime.UtcNow,
                     TimeZoneInfo.FindSystemTimeZoneById("E. South America Standard Time")
-                );
+                ).AddDays(1);
 
                 string endpoint = $"{BaseUrl}Pedido/";
                 endpoint += pedidoId > 0

@@ -29,15 +29,14 @@ else
     </div>
 
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-12">
             <label class="form-label"><strong>Código do Atualizador:</strong></label>
             <input type="text" asp-for="CodigoPedido" class="form-control" required />
         </div>
-        <div class="col-md-6">
+        @* <div class="col-md-6">
             <label class="form-label"><strong>Data Atualização:</strong></label>
-            <input type="datetime-local" asp-for="DataHoraAtualizacao" class="form-control" required step="60"
-                   value="@Model.DataHoraAtualizacao.ToString("yyyy-MM-dd")" />
-        </div>
+            <input type="date" asp-for="DataHoraAtualizacao" class="form-control" min="2020-01-01" max="2030-12-31" required />
+        </div> *@
     </div>
 
     <div class="d-flex justify-content-end mt-3">
